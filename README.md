@@ -142,6 +142,22 @@ Watch the pipeline status ticket - query received, live search running, Gemini r
 
 </details>
 
+## 🧠 The Agent Pattern — Extend This
+
+Grant Scout is one instance of a general shape: **retrieve real results at request time → reason over only what came back → cite the exact source for every claim → refuse to answer when nothing verifiable turned up.** Nothing about that pipeline is grant-specific - `_lib.py` just happens to point it at SerpApi and grants.gov. The landing page's [Beyond the Demo section](frontend/components/gs/AgentPattern.tsx) walks through five other domains the same shape fits (public benefits eligibility, scholarships for people with no institutional affiliation, permit lookups, vendor/certification checks, public procurement) plus an honest now/next table of what this specific build hasn't done yet.
+
+**Swap this to build your own variation:**
+
+- **Swap the source.** Replace `tool_search_funding_programs` / `tool_search_grants_gov` in [`_lib.py`](frontend/api/_lib.py) with any API that returns real, structured, linkable results - a permitting API, a benefits-eligibility API, a company registry. The agent-construction shape (`Agent(..., tools=[tool])`) and the "only cite what the tool returned" instruction don't need to change.
+- **Swap the routing rule.** `route_question()` is a deterministic keyword check, not a model decision, because a documented live test showed `gemini-flash-lite-latest` picking the wrong tool on every single federal-signal question it was given both tools for. If your domain has a similarly clean signal (a jurisdiction, a document type, a program category), hardcode the split first and only hand routing to the model once you've tested it doesn't regress.
+- **Swap the refusal condition.** `_run_once()` in [`chat.py`](frontend/api/chat.py) only reports `success=True` when the tool actually returned usable sources, and the handler raises `UpstreamError` rather than let the model answer from nothing. Whatever domain you point this at, keep that gate - it's the difference between "verifiable answers" and "a chatbot that sounds confident either way."
+
+**Example prompts to hand Claude or Cursor:**
+
+1. *"Add a third tool to `_lib.py` called `tool_search_sam_gov` that checks whether a company is on SAM.gov's exclusion list, following the exact same shape as `tool_search_grants_gov` - real HTTP call, structured results with a working link, no fabricated fields if the lookup fails."*
+2. *"Change `route_question()` so a question containing a US state name routes to a new `tool_search_state_permits` tool instead of SerpApi, and write the keyword list the same way `FEDERAL_SIGNAL_TERMS` is written - explicit, tested, not left to model judgment."*
+3. *"Rewrite `_SHARED_INSTRUCTION` in `_lib.py` for a scholarship-discovery version of this agent: same two-heading structure and same 'cite the real URL, never claim to have opened the page' rule, but sorted by whether a program requires current university enrollment instead of by incorporation status."*
+
 <div align="center">
 
 ![ArkNet Digital](https://capsule-render.vercel.app/api?type=waving&color=0:1D4ED8,55:0B1E3D,100:020617&height=120&section=footer&text=ArkNet%20Digital&fontSize=28&fontColor=ffffff&desc=michael%40arknet.digital&descAlignY=75&descSize=14)
