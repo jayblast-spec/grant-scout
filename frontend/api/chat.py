@@ -14,7 +14,7 @@ from google.adk.runners import InMemoryRunner
 
 _T_ADK_IMPORTED = time.time()
 
-from _lib import grant_scout_agent
+from _lib import build_grant_scout_agent, route_question
 from _ratelimit import check_rate_limit, get_client_ip
 
 _T_MODULE_READY = time.time()
@@ -58,82 +58,104 @@ class UpstreamError(Exception):
 SEARCH_TOOL_NAMES = {"tool_search_funding_programs", "tool_search_grants_gov"}
 
 
+async def _run_once(route: str, question: str) -> dict:
+    """Runs the agent scoped to exactly one tool (route: 'grants_gov' or 'serpapi') and
+    returns the parsed result. Never raises for a clean "no results" outcome - that's
+    reported via success=False so the caller can decide whether to fall back."""
+    t_runner_start = time.time()
+    agent = build_grant_scout_agent(route)
+    runner = InMemoryRunner(agent=agent)
+    t_runner_built = time.time()
+    _perf_log("request.build_runner", t_runner_built - t_runner_start)
+    try:
+        events = await runner.run_debug(question, quiet=True)
+    except Exception as exc:
+        logger.error("Agent run failed (route=%s): %s", route, exc)
+        raise UpstreamError("The agent backend (Gemini) failed to respond.") from exc
+    finally:
+        _perf_log(f"request.run_debug_total.{route}", time.time() - t_runner_built)
+
+    answer = "No response from Grant Scout."
+    searched = False
+    search_query = None
+    sources: list = []
+    tool_call_count = 0
+    tool_errors: list[str] = []
+
+    for event in events:
+        if not event.content or not event.content.parts:
+            continue
+        for part in event.content.parts:
+            fc = part.function_call
+            if fc and fc.name in SEARCH_TOOL_NAMES:
+                searched = True
+                tool_call_count += 1
+                args = fc.args
+                if args is None:
+                    logger.warning("function_call.args was None for %s; no query extracted", fc.name)
+                elif search_query is None:
+                    search_query = args.get("query")
+            fr = part.function_response
+            if fr and isinstance(fr.response, dict):
+                resp = fr.response
+                if "results" in resp and isinstance(resp["results"], list):
+                    sources.extend(resp["results"])
+                err = resp.get("error")
+                if err:
+                    tool_errors.append(err)
+            if part.text:
+                answer = part.text
+
+    if tool_call_count > 1:
+        logger.warning(
+            "route=%s tool was called %d times in one request (instructed to call once) "
+            "-- known driver of worst-case latency; investigate if this recurs.",
+            route,
+            tool_call_count,
+        )
+    _perf_log(f"request.tool_call_count.{route}", tool_call_count)
+
+    # SerpApi caps at 10 itself; grants.gov at 5.
+    sources = sources[:10]
+
+    return {
+        "success": searched and tool_call_count > 0 and len(sources) > 0,
+        "answer": answer,
+        "search_query": search_query,
+        "sources": sources,
+        "tool_errors": tool_errors,
+    }
+
+
 def _ask_grant_scout(question: str) -> dict:
     async def _run():
-        t_runner_start = time.time()
-        runner = InMemoryRunner(agent=grant_scout_agent)
-        t_runner_built = time.time()
-        _perf_log("request.build_runner", t_runner_built - t_runner_start)
-        try:
-            events = await runner.run_debug(question, quiet=True)
-        except Exception as exc:
-            logger.error("Agent run failed: %s", exc)
-            raise UpstreamError("The agent backend (Gemini) failed to respond.") from exc
-        finally:
-            _perf_log("request.run_debug_total", time.time() - t_runner_built)
+        primary_route = route_question(question)
+        fallback_route = "serpapi" if primary_route == "grants_gov" else "grants_gov"
+        _perf_log(f"request.route_chosen.{primary_route}", 0.0)
 
-        answer = "No response from Grant Scout."
-        searched = False
-        search_query = None
-        sources: list = []
-        tool_call_count = 0
-        per_tool_call_counts: dict[str, int] = {}
-        tool_errors: list[str] = []
+        result = await _run_once(primary_route, question)
 
-        for event in events:
-            if not event.content or not event.content.parts:
-                continue
-            for part in event.content.parts:
-                fc = part.function_call
-                if fc and fc.name in SEARCH_TOOL_NAMES:
-                    searched = True
-                    tool_call_count += 1
-                    per_tool_call_counts[fc.name] = per_tool_call_counts.get(fc.name, 0) + 1
-                    args = fc.args
-                    if args is None:
-                        logger.warning("function_call.args was None for %s; no query extracted", fc.name)
-                    elif search_query is None:
-                        search_query = args.get("query")
-                fr = part.function_response
-                if fr and isinstance(fr.response, dict):
-                    resp = fr.response
-                    if "results" in resp and isinstance(resp["results"], list):
-                        sources.extend(resp["results"])
-                    err = resp.get("error")
-                    if err:
-                        tool_errors.append(err)
-                if part.text:
-                    answer = part.text
+        if not result["success"]:
+            logger.info(
+                "route=%s returned no usable results, falling back to route=%s once",
+                primary_route,
+                fallback_route,
+            )
+            result = await _run_once(fallback_route, question)
 
-        for tool_name, count in per_tool_call_counts.items():
-            if count > 1:
-                logger.warning(
-                    "%s was called %d times in one request (prompt instructs at most once "
-                    "per tool) -- this is a known driver of worst-case latency; investigate "
-                    "if this recurs.",
-                    tool_name,
-                    count,
-                )
-        _perf_log("request.tool_call_count", tool_call_count)
-
-        # Cap the combined result list (SerpApi caps at 10 itself; grants.gov at 5) so a
-        # fallback second tool call can never blow up the UI's source list unbounded.
-        sources = sources[:10]
-
-        searched_successfully = searched and tool_call_count > 0 and len(sources) > 0
-        if not searched_successfully:
+        if not result["success"]:
             message = (
-                tool_errors[0]
-                if tool_errors
+                result["tool_errors"][0]
+                if result["tool_errors"]
                 else "Live search returned no usable sources. Please refine your question and try again."
             )
             raise UpstreamError(message)
 
         return {
-            "answer": answer,
+            "answer": result["answer"],
             "searched_live": True,
-            "search_query": search_query,
-            "sources": sources,
+            "search_query": result["search_query"],
+            "sources": result["sources"],
         }
 
     return asyncio.run(_run())

@@ -25,14 +25,31 @@ export type ChatResponse = {
  * Python source of truth:
  *   - frontend/api/chat.py: { answer, searched_live, search_query, sources }
  *   - frontend/api/_lib.py: each source item is { title, link, snippet }
+ *
+ * NOTE: a request can also be intercepted before it ever reaches chat.py -
+ * Vercel's edge firewall (the /api/chat rate limit) returns its own error
+ * shape, { error: { code, message, id } }, where `error` is an object, not
+ * our API's plain string. extractErrorMessage() below handles both.
  */
 export type RawChatApiResponse = {
   answer: string;
   searched_live: boolean;
   search_query: string | null;
   sources: Array<{ title?: string; link?: string; snippet?: string }>;
-  error?: string;
+  error?: string | { code?: string; message?: string; id?: string };
 };
+
+function extractErrorMessage(rawError: RawChatApiResponse["error"], status: number): string {
+  if (typeof rawError === "string" && rawError) return rawError;
+  if (rawError && typeof rawError === "object") {
+    if (rawError.message) {
+      return status === 403
+        ? "Grant Scout is getting a lot of requests right now to protect a shared free search budget. Please try again in a little while."
+        : rawError.message;
+    }
+  }
+  return `The agent returned ${status}.`;
+}
 
 export const EXAMPLE_PROMPTS = [
   "Grants for a solo, non-incorporated founder building developer tools in the US",
@@ -46,9 +63,14 @@ export async function askGrantScout(message: string): Promise<ChatResponse> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question: message }),
   });
-  const data: RawChatApiResponse = await res.json();
+  let data: RawChatApiResponse;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`The agent returned ${res.status} with no readable response.`);
+  }
   if (!res.ok || data.error) {
-    throw new Error(data.error ?? `The agent returned ${res.status}.`);
+    throw new Error(extractErrorMessage(data.error, res.status));
   }
   const sources: GrantSource[] = (data.sources ?? []).map((s) => ({
     title: s.title ?? s.link ?? "Source",

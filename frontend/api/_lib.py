@@ -223,49 +223,86 @@ def tool_search_grants_gov(query: str) -> dict:
     return {"query": query, "results": results, "result_count": len(results)}
 
 
-grant_scout_agent = Agent(
-    name="grant_scout_agent",
-    model="gemini-flash-lite-latest",
-    instruction=(
-        "You are Grant Scout, an agent that helps solo and non-incorporated founders find "
-        "funding programs (grants, non-dilutive funding, accelerators, fellowships) they might "
-        "actually qualify for. "
-        "\n\n"
-        "You have two live search tools, and you MUST call exactly one of them with a "
-        "well-formed search query derived from the user's question before answering. Never "
-        "answer from prior knowledge alone - the search results are your only source of truth "
-        "about what programs exist. "
-        "\n\n"
-        "Choosing which tool: "
-        "(1) tool_search_grants_gov calls grants.gov's real Search API and returns real US "
-        "federal grant opportunities (opportunity number, agency, close date, and a real "
-        "grants.gov detail-page link). Call this one when the question is clearly about US "
-        "federal funding - it mentions 'federal', a specific US federal agency, SBIR/STTR, "
-        "or 'grants.gov' itself. It is the more precise, authoritative source for that case. "
-        "(2) tool_search_funding_programs calls SerpApi's live Google Search and is the general, "
-        "global fallback - accelerators, fellowships, state/private/international programs, or "
-        "anything not clearly a US federal grant. Call this one for everything else. "
-        "\n\n"
-        "Call only ONE tool for a typical question - a second live search roughly doubles "
-        "response time for the person waiting on this answer, which is not an acceptable trade "
-        "for marginally better results. The only exception: if your first tool call returns zero "
-        "usable results, you may call the OTHER tool once as a fallback - never call the same "
-        "tool twice, and never call both tools defensively when the first one already returned "
-        "usable results. Answer from the results you have, being honest about their limits if "
-        "they're thin or ambiguous, rather than searching further. "
-        "\n\n"
-        "After a tool returns real results, review each one and: "
-        "(1) summarize which listed programs plausibly do NOT require legal incorporation to apply "
-        "or to receive funds, explaining your reasoning from the title/snippet; "
-        "(2) flag which ones likely DO require an incorporated entity (LLC, C-corp, nonprofit) or "
-        "where you cannot tell from the snippet alone. Never imply that you opened or read the linked page; "
-        "(3) always cite the real URL for every program you mention. "
-        "If the search results don't clearly answer the question, say so honestly instead of "
-        "guessing - never fabricate a grant, deadline, or amount that isn't in the search results. "
-        "Keep the answer concise and scannable, using short bullet points."
-    ),
-    tools=[tool_search_funding_programs, tool_search_grants_gov],
+# Which tool actually fires is decided in code (see route_question below), not left to
+# gemini-flash-lite-latest's judgment. Measured against production (2026-08-27): with both
+# tools offered and a soft instruction telling the model when to prefer grants.gov, it chose
+# tool_search_funding_programs (SerpApi) on every single tested request, including questions
+# that said "grants.gov" outright - confirmed via the absence of any grants_gov.search_call
+# perf log across multiple live production requests. A small, fast model reliably following a
+# nuanced two-tool routing instruction turned out not to hold up under test, so routing is now
+# a deterministic keyword check before the agent is even built, and each request's agent is
+# given exactly one tool - there is no wrong tool for the model to pick because there is only
+# one available.
+FEDERAL_SIGNAL_TERMS = (
+    "federal",
+    "grants.gov",
+    "grants gov",
+    "sbir",
+    "sttr",
+    "nih",
+    "nsf",
+    "nasa",
+    "darpa",
+    "doe grant",
+    "department of energy",
+    "usda grant",
+    "epa grant",
+    "cfda",
+    "assistance listing",
 )
+
+
+def route_question(question: str) -> str:
+    """Returns 'grants_gov' or 'serpapi' - the one tool this question's agent will get."""
+    lowered = question.lower()
+    if any(term in lowered for term in FEDERAL_SIGNAL_TERMS):
+        return "grants_gov"
+    return "serpapi"
+
+
+_SHARED_INSTRUCTION = (
+    "You are Grant Scout, an agent that helps solo and non-incorporated founders find "
+    "funding programs (grants, non-dilutive funding, accelerators, fellowships) they might "
+    "actually qualify for. "
+    "\n\n"
+    "You have exactly one live search tool. Call it once with a well-formed search query "
+    "derived from the user's question before answering - never answer from prior knowledge "
+    "alone, the search results are your only source of truth about what programs exist. Call "
+    "the tool only once; do not call it again for the same question even if the results seem "
+    "thin, since a second live search roughly doubles response time for the person waiting on "
+    "this answer. "
+    "\n\n"
+    "After the tool returns real results, review each one and: "
+    "(1) summarize which listed programs plausibly do NOT require legal incorporation to apply "
+    "or to receive funds, explaining your reasoning from the title/snippet; "
+    "(2) flag which ones likely DO require an incorporated entity (LLC, C-corp, nonprofit) or "
+    "where you cannot tell from the snippet alone. Never imply that you opened or read the linked page; "
+    "(3) always cite the real URL for every program you mention. "
+    "If the search results don't clearly answer the question, say so honestly instead of "
+    "guessing - never fabricate a grant, deadline, or amount that isn't in the search results. "
+    "Keep the answer concise and scannable, using short bullet points."
+)
+
+
+def build_grant_scout_agent(route: str) -> Agent:
+    """route is 'grants_gov' or 'serpapi', from route_question(). Builds a fresh Agent scoped
+    to exactly that one tool - see the FEDERAL_SIGNAL_TERMS comment above for why."""
+    if route == "grants_gov":
+        tool = tool_search_grants_gov
+    else:
+        tool = tool_search_funding_programs
+    return Agent(
+        name="grant_scout_agent",
+        model="gemini-flash-lite-latest",
+        instruction=_SHARED_INSTRUCTION,
+        tools=[tool],
+    )
+
+
+# Kept for any external code/tests that still import a module-level agent directly; routes
+# like the pre-fix behavior's default (SerpApi) rather than being used by chat.py at request
+# time, which now always calls build_grant_scout_agent(route_question(question)) instead.
+grant_scout_agent = build_grant_scout_agent("serpapi")
 
 # NOTE on streaming (2026-08-25): a real token-by-token streaming path was
 # built and tested against this project's live Vercel deployment, using
