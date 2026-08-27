@@ -1,0 +1,298 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Grant Scout — ink navy design system, emerald accent.
+ * All colors in oklch. Never hardcode colors in components.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-surface-raised: var(--surface-raised);
+  --color-hairline: var(--hairline);
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "Space Grotesk", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.184 0.032 262);
+  --foreground: oklch(0.968 0.008 250);
+
+  --card: oklch(0.222 0.032 262);
+  --card-foreground: oklch(0.968 0.008 250);
+  --popover: oklch(0.222 0.032 262);
+  --popover-foreground: oklch(0.968 0.008 250);
+
+  --primary: oklch(0.76 0.15 165);
+  --primary-foreground: oklch(0.18 0.04 165);
+
+  --secondary: oklch(0.27 0.032 262);
+  --secondary-foreground: oklch(0.95 0.008 250);
+
+  --muted: oklch(0.26 0.03 262);
+  --muted-foreground: oklch(0.72 0.024 254);
+
+  --accent: oklch(0.3 0.036 262);
+  --accent-foreground: oklch(0.968 0.008 250);
+
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.98 0.005 250);
+
+  --border: oklch(0.98 0.02 250 / 12%);
+  --input: oklch(0.98 0.02 250 / 16%);
+  --ring: oklch(0.76 0.15 165 / 55%);
+
+  --surface-raised: oklch(0.235 0.032 262 / 70%);
+  --hairline: oklch(0.98 0.02 250 / 10%);
+  --shadow-panel: 0 1px 0 0 oklch(1 0 0 / 6%) inset, 0 24px 60px -32px oklch(0.1 0.03 262 / 90%);
+  --glow-accent: 0 0 0 1px oklch(0.76 0.15 165 / 22%), 0 18px 50px -24px oklch(0.76 0.15 165 / 45%);
+  --amber-live: oklch(0.79 0.16 78);
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: oklch(0.76 0.15 165 / 28%);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 12%);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+@utility panel {
+  background-color: var(--surface-raised);
+  border: 1px solid var(--hairline);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(10px);
+}
+
+@utility hairline {
+  border: 1px solid var(--hairline);
+}
+
+@utility rule-grid {
+  background-image:
+    linear-gradient(to right, oklch(0.98 0.02 250 / 4%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0.98 0.02 250 / 4%) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility grain {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  }
+}
+
+/* Spotlight: cursor-tracked border glow, coordinates set via inline style vars by the Spotlight component. */
+@utility spotlight {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: var(--spot-opacity, 0);
+    transition: opacity 300ms ease;
+    background: radial-gradient(
+      240px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+      oklch(0.76 0.15 165 / 16%),
+      transparent 70%
+    );
+  }
+}
+
+/* Terminal-style pipeline ticket. Perspective lives here so each step's
+   depth transform (see .pipeline-step) reads as real 3D, not a flat scale. */
+@utility ticket-rail {
+  background-image: linear-gradient(to right, var(--hairline) 1px, transparent 1px);
+  background-size: 25% 100%;
+  perspective: 1200px;
+}
+
+/* Live-pipeline step depth: transform is set inline per state (pending /
+   active / done) in TryIt.tsx; this utility just owns the transition curve
+   so the step genuinely moves through Z-space as it advances, instead of
+   only changing color/opacity. */
+@utility pipeline-step {
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 420ms ease,
+    background-color 420ms ease;
+  will-change: transform;
+}
+
+@utility pipeline-step-active {
+  background-color: var(--color-card);
+  box-shadow: var(--glow-accent);
+  border-radius: var(--radius-md);
+}
+
+/* Stacked-card tilt for Recent Searches: pointer-tracked rotateX/rotateY set
+   via --tilt-x/--tilt-y custom properties by TiltCard.tsx. Kept separate
+   from `spotlight` so the glow and the depth can be composed independently. */
+@utility tilt-card {
+  transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Resting fan rotation for a "stack of past research" feel; flattens to 0
+   when a card is opened (see RecentSearches.tsx). */
+@utility stack-rest {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.76 0.15 165 / 45%);
+  }
+  50% {
+    box-shadow: 0 0 0 6px oklch(0.76 0.15 165 / 0%);
+  }
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Card lands like a physical index card dropped onto a research stack:
+   tips in from a slight overhead angle, settles with a small overshoot.
+   Used for Recent Searches entries instead of the flat fade-up. */
+@keyframes card-land {
+  0% {
+    opacity: 0;
+    transform: perspective(900px) translateY(-22px) rotateX(-16deg) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: perspective(900px) translateY(3px) rotateX(3deg) scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(900px) translateY(0) rotateX(0deg) scale(1);
+  }
+}
+
+@utility animate-fade-up {
+  animation: fade-up 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
