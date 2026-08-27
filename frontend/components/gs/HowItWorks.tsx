@@ -13,7 +13,7 @@ const steps = [
     icon: Globe2,
     step: "02",
     title: "A live search runs, not a memory lookup",
-    body: "Grant Scout calls Google Search through SerpApi at request time. Results reflect what is published right now, so closed rounds and stale deadlines don't get repeated back as fact.",
+    body: "For US federal questions, Grant Scout calls grants.gov's own Search API for real opportunity data; otherwise it calls Google Search through SerpApi. Either way, the call happens at request time, so closed rounds and stale deadlines don't get repeated back as fact.",
   },
   {
     icon: ListChecks,

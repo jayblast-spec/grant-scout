@@ -1,6 +1,6 @@
 import { Compass } from "lucide-react";
 
-const stack = ["Google ADK", "Gemini", "SerpApi", "Next.js", "Vercel"];
+const stack = ["Google ADK", "Gemini", "SerpApi", "Grants.gov API", "Next.js", "Vercel"];
 
 export function SiteFooter() {
   return (

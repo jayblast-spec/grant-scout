@@ -111,11 +111,11 @@ export function TryIt() {
             />
 
             <div className="mt-3 flex items-center justify-between gap-4 border-t border-hairline pt-3">
-              <p className="font-mono text-[11px] text-muted-foreground/70">SerpApi &rarr; Gemini &middot; cited sources</p>
+              <p className="font-mono text-[11px] text-muted-foreground/70">SerpApi + grants.gov &rarr; Gemini &middot; cited sources</p>
               <button
                 type="submit"
                 disabled={isLoading || query.trim().length === 0}
-                className="inline-flex min-h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:translate-y-px disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground"
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md transition-[background-color,transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:translate-y-0 disabled:cursor-not-allowed disabled:translate-y-0 disabled:bg-secondary disabled:text-muted-foreground disabled:shadow-none"
               >
                 {isLoading ? (
                   <>

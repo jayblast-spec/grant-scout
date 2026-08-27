@@ -48,7 +48,14 @@ _perf_log("cold_start.total_module_import", _T_MODULE_READY - _T_MODULE_START)
 
 
 class UpstreamError(Exception):
-    """Raised when SerpApi/Gemini fail in a way we can't recover from."""
+    """Raised when SerpApi/grants.gov/Gemini fail in a way we can't recover from."""
+
+
+# Both of the agent's live-search tools (see _lib.py). Recognizing both here
+# is what actually wires grants.gov results into the response -- ADK's event
+# stream identifies a tool call by name, and this used to only look for
+# "tool_search_funding_programs".
+SEARCH_TOOL_NAMES = {"tool_search_funding_programs", "tool_search_grants_gov"}
 
 
 def _ask_grant_scout(question: str) -> dict:
@@ -68,43 +75,58 @@ def _ask_grant_scout(question: str) -> dict:
         answer = "No response from Grant Scout."
         searched = False
         search_query = None
-        sources = []
+        sources: list = []
         tool_call_count = 0
-        tool_error = None
+        per_tool_call_counts: dict[str, int] = {}
+        tool_errors: list[str] = []
 
         for event in events:
             if not event.content or not event.content.parts:
                 continue
             for part in event.content.parts:
-                if part.function_call and part.function_call.name == "tool_search_funding_programs":
+                fc = part.function_call
+                if fc and fc.name in SEARCH_TOOL_NAMES:
                     searched = True
                     tool_call_count += 1
-                    args = part.function_call.args
+                    per_tool_call_counts[fc.name] = per_tool_call_counts.get(fc.name, 0) + 1
+                    args = fc.args
                     if args is None:
-                        logger.warning("function_call.args was None; no query extracted")
-                        search_query = None
-                    else:
+                        logger.warning("function_call.args was None for %s; no query extracted", fc.name)
+                    elif search_query is None:
                         search_query = args.get("query")
-                if part.function_response and isinstance(part.function_response.response, dict):
-                    resp = part.function_response.response
-                    tool_error = resp.get("error")
-                    if "results" in resp:
-                        sources = resp["results"] if isinstance(resp["results"], list) else []
+                fr = part.function_response
+                if fr and isinstance(fr.response, dict):
+                    resp = fr.response
+                    if "results" in resp and isinstance(resp["results"], list):
+                        sources.extend(resp["results"])
+                    err = resp.get("error")
+                    if err:
+                        tool_errors.append(err)
                 if part.text:
                     answer = part.text
 
-        if tool_call_count > 1:
-            logger.warning(
-                "tool_search_funding_programs was called %d times in one request "
-                "(prompt instructs exactly once) -- this is the known driver of the "
-                "worst-case latency; investigate if this recurs.",
-                tool_call_count,
-            )
+        for tool_name, count in per_tool_call_counts.items():
+            if count > 1:
+                logger.warning(
+                    "%s was called %d times in one request (prompt instructs at most once "
+                    "per tool) -- this is a known driver of worst-case latency; investigate "
+                    "if this recurs.",
+                    tool_name,
+                    count,
+                )
         _perf_log("request.tool_call_count", tool_call_count)
 
-        searched_successfully = tool_call_count == 1 and not tool_error and len(sources) > 0
+        # Cap the combined result list (SerpApi caps at 10 itself; grants.gov at 5) so a
+        # fallback second tool call can never blow up the UI's source list unbounded.
+        sources = sources[:10]
+
+        searched_successfully = searched and tool_call_count > 0 and len(sources) > 0
         if not searched_successfully:
-            message = tool_error or "Live search returned no usable sources. Please refine your question and try again."
+            message = (
+                tool_errors[0]
+                if tool_errors
+                else "Live search returned no usable sources. Please refine your question and try again."
+            )
             raise UpstreamError(message)
 
         return {

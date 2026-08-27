@@ -21,6 +21,17 @@ logger = logging.getLogger("grant_scout")
 SERPAPI_URL = "https://serpapi.com/search"
 SERPAPI_ACCOUNT_URL = "https://serpapi.com/account.json"
 
+# grants.gov's real public Search API (search2). POST, JSON body, no API key.
+# Verified live 2026-08-27 with a real request (POST keyword="artificial
+# intelligence") against the exact endpoint below; response shape confirmed
+# as { errorcode, msg, data: { hitCount, oppHits: [{ id, number, title,
+# agencyCode, agency, openDate, closeDate, oppStatus, docType, cfdaList }] } }.
+# The real opportunity detail page for a given oppHit lives at
+# https://www.grants.gov/search-results-detail/{id} (confirmed by fetching
+# that exact URL for a real id returned by the live search above).
+GRANTS_GOV_SEARCH_URL = "https://api.grants.gov/v1/api/search2"
+GRANTS_GOV_DETAIL_URL_TEMPLATE = "https://www.grants.gov/search-results-detail/{opp_id}"
+
 # SerpApi's free tier is 250 searches/month. Below this many searches
 # remaining for the month, refuse new live searches rather than risk running
 # the account fully dry before a judge/user gets to try the demo. This reads
@@ -137,6 +148,81 @@ def tool_search_funding_programs(query: str) -> dict:
     return {"query": query, "results": results, "result_count": len(results)}
 
 
+def tool_search_grants_gov(query: str) -> dict:
+    """Run a live search against grants.gov's public Search API for real US federal grant opportunities.
+
+    Calls https://api.grants.gov/v1/api/search2 (POST, no API key required) - this
+    is grants.gov's own public search endpoint, the same one grants.gov's website
+    search uses. Use this instead of tool_search_funding_programs specifically when
+    the user's question is about US federal grant opportunities (mentions "federal",
+    "grants.gov", a specific US federal agency, SBIR/STTR, or similar).
+
+    Args:
+        query: A plain-language funding topic to search for, e.g. "AI research
+            grants for individuals" - sent as grants.gov's `keyword` parameter.
+
+    Returns:
+        A dict with real, structured grants.gov opportunities - title, the
+        opportunity's real grants.gov detail-page link (https://www.grants.gov/
+        search-results-detail/{oppId}), and a snippet built only from that
+        opportunity's real agency, status, and close date. This is the only
+        source of grants.gov-specific program information the agent is allowed
+        to cite; it must never invent an opportunity, deadline, or agency that
+        isn't in this data.
+    """
+    payload = {"keyword": query, "rows": 5, "oppStatuses": "posted|forecasted"}
+    t0 = time.time()
+    try:
+        resp = requests.post(GRANTS_GOV_SEARCH_URL, json=payload, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.exceptions.Timeout:
+        logger.error("grants.gov search2 request timed out after 10s")
+        return {
+            "error": "Live grants.gov search took too long and was skipped for this response. "
+            "Please try again.",
+            "query": query,
+            "results": [],
+        }
+    except Exception as exc:
+        logger.error("grants.gov search2 request failed: %s", exc)
+        return {"error": "grants.gov search request failed.", "query": query, "results": []}
+    finally:
+        _perf_log("grants_gov.search_call", time.time() - t0)
+
+    if not isinstance(data, dict) or data.get("errorcode") not in (0, "0"):
+        msg = data.get("msg") if isinstance(data, dict) else None
+        logger.error("grants.gov search2 returned an error: %s", msg)
+        return {"error": msg or "grants.gov search returned an error.", "query": query, "results": []}
+
+    opp_hits = ((data.get("data") or {}).get("oppHits")) or []
+    if not isinstance(opp_hits, list):
+        opp_hits = []
+
+    results = []
+    for hit in opp_hits[:5]:
+        if not isinstance(hit, dict):
+            continue
+        opp_id = hit.get("id")
+        title = hit.get("title")
+        link = _safe_http_url(GRANTS_GOV_DETAIL_URL_TEMPLATE.format(opp_id=opp_id)) if opp_id else None
+        if not title or not link:
+            continue
+        agency = hit.get("agency") or hit.get("agencyCode") or "Agency not specified"
+        close_date = hit.get("closeDate") or "not listed (forecasted opportunity)"
+        status = hit.get("oppStatus") or "unknown"
+        opp_number = hit.get("number") or "n/a"
+        results.append(
+            {
+                "title": title,
+                "link": link,
+                "snippet": f"{agency} · Opportunity #{opp_number} · Status: {status} · Closes: {close_date}",
+            }
+        )
+
+    return {"query": query, "results": results, "result_count": len(results)}
+
+
 grant_scout_agent = Agent(
     name="grant_scout_agent",
     model="gemini-flash-lite-latest",
@@ -145,19 +231,30 @@ grant_scout_agent = Agent(
         "funding programs (grants, non-dilutive funding, accelerators, fellowships) they might "
         "actually qualify for. "
         "\n\n"
-        "For every user question, you MUST call tool_search_funding_programs with a well-formed "
-        "search query derived from the user's question before answering. Never answer from prior "
-        "knowledge alone - the search results are your only source of truth about what programs "
-        "exist. "
+        "You have two live search tools, and you MUST call exactly one of them with a "
+        "well-formed search query derived from the user's question before answering. Never "
+        "answer from prior knowledge alone - the search results are your only source of truth "
+        "about what programs exist. "
         "\n\n"
-        "Call tool_search_funding_programs EXACTLY ONCE per question, no matter what the results "
-        "look like. Do not call it a second time to refine the query, fetch more results, or double-"
-        "check anything - a second live search roughly doubles response time for the person waiting "
-        "on this answer, which is not an acceptable trade for marginally better results. Answer from "
-        "the single set of results you already have, being honest about their limits if they're thin "
-        "or ambiguous, rather than searching again. "
+        "Choosing which tool: "
+        "(1) tool_search_grants_gov calls grants.gov's real Search API and returns real US "
+        "federal grant opportunities (opportunity number, agency, close date, and a real "
+        "grants.gov detail-page link). Call this one when the question is clearly about US "
+        "federal funding - it mentions 'federal', a specific US federal agency, SBIR/STTR, "
+        "or 'grants.gov' itself. It is the more precise, authoritative source for that case. "
+        "(2) tool_search_funding_programs calls SerpApi's live Google Search and is the general, "
+        "global fallback - accelerators, fellowships, state/private/international programs, or "
+        "anything not clearly a US federal grant. Call this one for everything else. "
         "\n\n"
-        "After the tool returns real search-result titles, URLs, and snippets, review each one and: "
+        "Call only ONE tool for a typical question - a second live search roughly doubles "
+        "response time for the person waiting on this answer, which is not an acceptable trade "
+        "for marginally better results. The only exception: if your first tool call returns zero "
+        "usable results, you may call the OTHER tool once as a fallback - never call the same "
+        "tool twice, and never call both tools defensively when the first one already returned "
+        "usable results. Answer from the results you have, being honest about their limits if "
+        "they're thin or ambiguous, rather than searching further. "
+        "\n\n"
+        "After a tool returns real results, review each one and: "
         "(1) summarize which listed programs plausibly do NOT require legal incorporation to apply "
         "or to receive funds, explaining your reasoning from the title/snippet; "
         "(2) flag which ones likely DO require an incorporated entity (LLC, C-corp, nonprofit) or "
@@ -167,7 +264,7 @@ grant_scout_agent = Agent(
         "guessing - never fabricate a grant, deadline, or amount that isn't in the search results. "
         "Keep the answer concise and scannable, using short bullet points."
     ),
-    tools=[tool_search_funding_programs],
+    tools=[tool_search_funding_programs, tool_search_grants_gov],
 )
 
 # NOTE on streaming (2026-08-25): a real token-by-token streaming path was

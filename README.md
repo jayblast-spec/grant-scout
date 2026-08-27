@@ -34,7 +34,7 @@ Grant Scout lets a solo founder ask a plain-language question - *"what grants ca
 
 ## How It Works
 
-Built on Google's Agent Development Kit (`google-adk`) running a single `Agent` (defined in [`frontend/api/_lib.py`](frontend/api/_lib.py)) with exactly one tool: `tool_search_funding_programs`, which calls SerpApi's Google Search API (`https://serpapi.com/search`) live and returns the real organic results - title, link, and snippet, capped at ten. The agent's system instruction is explicit that this tool call is mandatory before every answer and that the search results are its *only* source of truth; nothing is permitted from prior knowledge. The model is `gemini-flash-lite-latest`, served through the free Gemini Developer API rather than Vertex AI (`GOOGLE_GENAI_USE_VERTEXAI=False` is set at import time) - the free-tier path was sufficient for the latency and cost profile this agent needs and avoids a GCP project/billing setup entirely.
+Built on Google's Agent Development Kit (`google-adk`) running a single `Agent` (defined in [`frontend/api/_lib.py`](frontend/api/_lib.py)) with two live-grounding tools. `tool_search_funding_programs` calls SerpApi's Google Search API (`https://serpapi.com/search`) live and returns the real organic results - title, link, and snippet, capped at ten - and is the general/global fallback. `tool_search_grants_gov` calls grants.gov's own public Search API (`https://api.grants.gov/v1/api/search2`, POST, no API key required) and returns real US federal opportunities - title, opportunity number, agency, close date, and the opportunity's real `grants.gov/search-results-detail/{id}` link. The agent's system instruction routes a question to whichever tool is the better real source (grants.gov for clearly-federal questions, SerpApi otherwise), calls exactly one tool for a typical question to protect latency, and only falls back to the other tool if the first one returned zero usable results. Nothing is ever answered from prior knowledge - the search results are the *only* source of truth. The model is `gemini-flash-lite-latest`, served through the free Gemini Developer API rather than Vertex AI (`GOOGLE_GENAI_USE_VERTEXAI=False` is set at import time) - the free-tier path was sufficient for the latency and cost profile this agent needs and avoids a GCP project/billing setup entirely.
 
 In production, [`frontend/api/chat.py`](frontend/api/chat.py) runs the same agent inside a single Vercel Python serverless function (a plain `BaseHTTPRequestHandler`, no framework), driving it with ADK's `InMemoryRunner`. It replays the run's event stream to recover three things the frontend needs: whether the search completed with usable sources (`searched_live`), the exact query the agent chose to run, and the raw `results` list from the tool's function response - which becomes the linked result list, independent of whatever prose the model wrote. That JSON is served to the Next.js chat UI ([`frontend/components/gs/TryIt.tsx`](frontend/components/gs/TryIt.tsx)) in the same deployment - no separate agent-hosting infrastructure. Demo prompts use fictional founder scenarios and are not retained by the public application.
 
@@ -57,6 +57,8 @@ flowchart LR
     style A fill:#8E75B2,color:#fff
     style G fill:#8E75B2,color:#fff
 ```
+
+The diagram above traces the SerpApi path specifically. A second tool, `tool_search_grants_gov`, sits alongside `tool_search_funding_programs` in the same agent - same shape (real live HTTP call in the request path, real structured results back to the same event stream), routed to instead of SerpApi when the question is clearly about US federal funding.
 
 ### Sequence: one real example query
 
@@ -124,7 +126,7 @@ Watch the pipeline status ticket - query received, live search running, Gemini r
 |---|---|
 | Agent orchestration | Google Agent Development Kit (`google-adk>=2.7.1`) |
 | Model | Gemini Flash Lite (`gemini-flash-lite-latest`), free Gemini Developer API |
-| Live grounding | SerpApi (Google Search API, `engine=google`) |
+| Live grounding | SerpApi (Google Search API, `engine=google`) &middot; grants.gov Search API (`search2`, no key) |
 | Backend | Python `http.server` handler as a Vercel serverless function |
 | Frontend | Next.js 16, React 19, TypeScript |
 | Hosting | Vercel (frontend + Python function, one deployment) |
@@ -135,6 +137,7 @@ Watch the pipeline status ticket - query received, live search running, Gemini r
 - **SerpApi's free plan gates key activation behind phone verification.** The signup itself doesn't hand you a working key - the account has to clear a phone-verification step before `SERPAPI_KEY` starts returning real `organic_results` instead of an auth error. Worth budgeting a few minutes for this before your first test call, not during a demo.
 - **Gemini via the free Developer API, not Vertex AI.** `_lib.py` sets `GOOGLE_GENAI_USE_VERTEXAI=False` before the ADK agent is constructed. That one line is the difference between "needs a GCP project, billing account, and IAM setup" and "needs an API key." For a single-agent, single-tool product like this, the Developer API path was the right tradeoff.
 - **`chat.py` re-derives structured data from an unstructured event stream.** ADK's `InMemoryRunner.run_debug` returns a list of events, not a clean response object. The handler requires exactly one matching function response with at least one usable result before returning `searched_live: true`; the linked results remain separate from the model's prose.
+- **grants.gov's `search2` endpoint was verified live, not from documentation alone.** A real `POST https://api.grants.gov/v1/api/search2` with `{"keyword": "artificial intelligence", "rows": 3, "oppStatuses": "forecasted|posted"}` was made directly (2026-08-27) to confirm the exact response shape - `{ errorcode, msg, data: { hitCount, oppHits: [...] } }` - before writing `tool_search_grants_gov`, and a real `oppHits[].id` from that call was used to confirm `https://www.grants.gov/search-results-detail/{id}` resolves to a real opportunity detail page. No key is required for this endpoint.
 - **`lucide-react` dropped its brand/logo icon set** (including a dedicated `Github` icon) in recent major versions. `SiteHeader.tsx` links out to GitHub using plain text plus an `ArrowUpRight` icon rather than importing a brand glyph - a small thing, but it'll trip up anyone who reaches for `<Github />` from `lucide-react` expecting it to still be there.
 
 </details>
