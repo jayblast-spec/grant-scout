@@ -7,7 +7,7 @@
 If you're a solo, non-incorporated founder, every "AI grant finder" you've tried has the same failure mode: it recalls funding programs from training data, half of which no longer exist, require an LLC you don't have, or were never real. Grant Scout doesn't recall - it **searches**. Every question triggers a live Google Search through SerpApi at request time; Gemini reviews only the returned titles, URLs, and snippets, sorts them for non-incorporation eligibility, and cites the real result URL behind every program it mentions.
 
 <p>
-  <a href="https://grant-scout-arknet.vercel.app"><img alt="Live Demo" src="https://img.shields.io/badge/Live-Demo-10B981?style=for-the-badge&logo=vercel&logoColor=white"></a>
+  <a href="https://grant-scout-jayblast.vercel.app"><img alt="Live Demo" src="https://img.shields.io/badge/Live-Demo-10B981?style=for-the-badge&logo=vercel&logoColor=white"></a>
   <a href="https://github.com/jayblast-spec/grant-scout"><img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white"></a>
 </p>
 
@@ -110,7 +110,7 @@ The fixture deliberately distinguishes snippet-level evidence from details that 
 
 ## Try It Live
 
-**[grant-scout-arknet.vercel.app](https://grant-scout-arknet.vercel.app)**
+**[grant-scout-jayblast.vercel.app](https://grant-scout-jayblast.vercel.app)**
 
 Ask it something like:
 
@@ -141,6 +141,6 @@ Watch the pipeline status ticket - query received, live search running, Gemini r
 
 <div align="center">
 
-Contact: `hello@grant-scout.example` (reserved example domain)
+![ArkNet Digital](https://capsule-render.vercel.app/api?type=waving&color=0:1D4ED8,55:0B1E3D,100:020617&height=120&section=footer&text=ArkNet%20Digital&fontSize=28&fontColor=ffffff&desc=michael%40arknet.digital&descAlignY=75&descSize=14)
 
 </div>
