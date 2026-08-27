@@ -41,6 +41,13 @@ GRANTS_GOV_DETAIL_URL_TEMPLATE = "https://www.grants.gov/search-results-detail/{
 SERPAPI_MIN_SEARCHES_BUFFER = 15
 
 
+# SerpApi occasionally returns a Google click-tracking redirect (google.com/goto?url=...,
+# google.com/url?q=..., or a googleadservices.com click URL) instead of the page's real
+# address for some result types. A tracking link isn't "a real source URL you can verify" -
+# it's an opaque redirect - so these are filtered out at the source rather than shown.
+_TRACKING_LINK_NETLOCS = {"www.google.com", "google.com", "www.googleadservices.com"}
+
+
 def _safe_http_url(value: object) -> str | None:
     if not isinstance(value, str):
         return None
@@ -49,6 +56,8 @@ def _safe_http_url(value: object) -> str | None:
     except ValueError:
         return None
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    if parsed.netloc.lower() in _TRACKING_LINK_NETLOCS:
         return None
     return value.strip()
 
@@ -273,14 +282,33 @@ _SHARED_INSTRUCTION = (
     "this answer. "
     "\n\n"
     "After the tool returns real results, review each one and: "
-    "(1) summarize which listed programs plausibly do NOT require legal incorporation to apply "
-    "or to receive funds, explaining your reasoning from the title/snippet; "
-    "(2) flag which ones likely DO require an incorporated entity (LLC, C-corp, nonprofit) or "
-    "where you cannot tell from the snippet alone. Never imply that you opened or read the linked page; "
-    "(3) always cite the real URL for every program you mention. "
+    "(1) sort which listed programs plausibly don't require legal incorporation to apply or to "
+    "receive funds, and which ones likely do (an LLC, C-corp, or nonprofit) or where the snippet "
+    "doesn't say; "
+    "(2) explain your reasoning for each in one plain sentence grounded in the actual title or "
+    "snippet text - never imply you opened or read the linked page, you only saw the snippet; "
+    "(3) cite the real URL for every program you mention. "
     "If the search results don't clearly answer the question, say so honestly instead of "
     "guessing - never fabricate a grant, deadline, or amount that isn't in the search results. "
-    "Keep the answer concise and scannable, using short bullet points."
+    "\n\n"
+    "How to write the answer - this matters as much as getting the facts right: "
+    "Start directly with the first program. Never open with a throat-clearing line like 'Based "
+    "on the search results, here is a breakdown' or 'Here's what I found' - the person can see "
+    "you searched, that sentence tells them nothing. "
+    "Use exactly two section headings, in this order: one for programs that plausibly don't "
+    "require incorporation, one for programs that likely do or where it's unclear. Use sentence "
+    "case for headings ('Likely open to you as an individual', not 'PLAUSIBLY DO NOT REQUIRE...' "
+    "in shouting case). Skip a section entirely if it has nothing in it rather than writing "
+    "'None found.' "
+    "Under each heading, one item per program: the program name as a markdown link using its "
+    "real URL (not a separate 'Link:' line), then one or two plain sentences of reasoning below "
+    "it. Do not bold the program name a second time inside the link, do not bold every noun "
+    "phrase in the reasoning, and do not label the sentence 'Why it may fit:' or 'Status:' - just "
+    "write the reasoning as a normal sentence. "
+    "Leave a blank line between programs so the answer has real visual breathing room, not a "
+    "dense wall of bullets. "
+    "End the answer once you've covered every real result - no summary paragraph restating what "
+    "you just said, no 'let me know if you'd like more details' closing line."
 )
 
 
