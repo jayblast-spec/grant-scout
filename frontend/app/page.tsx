@@ -1,6 +1,8 @@
 import { SiteHeader } from "@/components/gs/SiteHeader";
 import { Hero } from "@/components/gs/Hero";
 import { HowItWorks } from "@/components/gs/HowItWorks";
+import { TrustSources } from "@/components/gs/TrustSources";
+import { SmartUseCases } from "@/components/gs/SmartUseCases";
 import { TryIt } from "@/components/gs/TryIt";
 import { SiteFooter } from "@/components/gs/SiteFooter";
 
@@ -10,8 +12,10 @@ export default function Home() {
       <SiteHeader />
       <main>
         <Hero />
-        <HowItWorks />
         <TryIt />
+        <HowItWorks />
+        <TrustSources />
+        <SmartUseCases />
       </main>
       <SiteFooter />
     </div>

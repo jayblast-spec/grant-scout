@@ -41,7 +41,9 @@
   --color-hero-card-muted: var(--hero-card-muted);
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Matched to the Wix mirror's heading font (bricolage-grotesque, weight 800). */
+  --font-display: "Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-live-cyan: var(--live-cyan);
 }
 
 :root {
@@ -49,12 +51,15 @@
      a rounded-2xl (1rem) card system, not the sharper rounded-lg this shipped with. */
   --radius: 0.75rem;
 
-  --background: oklch(0.184 0.032 262);
+  /* Background matched exactly (oklch conversion of #0A0D14) to the Wix Aria
+     mirror generated for this product's "cinematic dark-mode" brief - sampled
+     via computed styles on the live preview, not eyeballed from a screenshot. */
+  --background: oklch(0.159 0.016 266.6);
   --foreground: oklch(0.968 0.008 250);
 
-  --card: oklch(0.222 0.032 262);
+  --card: oklch(0.197 0.024 265);
   --card-foreground: oklch(0.968 0.008 250);
-  --popover: oklch(0.222 0.032 262);
+  --popover: oklch(0.197 0.024 265);
   --popover-foreground: oklch(0.968 0.008 250);
 
   /* Primary nudged toward the reference site's punchier emerald accent
@@ -63,13 +68,13 @@
   --primary: oklch(0.72 0.18 163);
   --primary-foreground: oklch(0.16 0.04 163);
 
-  --secondary: oklch(0.27 0.032 262);
+  --secondary: oklch(0.245 0.032 265);
   --secondary-foreground: oklch(0.95 0.008 250);
 
-  --muted: oklch(0.26 0.03 262);
+  --muted: oklch(0.235 0.03 265);
   --muted-foreground: oklch(0.72 0.024 254);
 
-  --accent: oklch(0.3 0.036 262);
+  --accent: oklch(0.275 0.036 265);
   --accent-foreground: oklch(0.968 0.008 250);
 
   --destructive: oklch(0.62 0.2 25);
@@ -79,11 +84,16 @@
   --input: oklch(0.98 0.02 250 / 16%);
   --ring: oklch(0.72 0.18 163 / 55%);
 
-  --surface-raised: oklch(0.235 0.032 262 / 70%);
+  --surface-raised: oklch(0.21 0.026 265 / 70%);
   --hairline: oklch(0.98 0.02 250 / 10%);
   --shadow-panel: 0 1px 0 0 oklch(1 0 0 / 6%) inset, 0 24px 60px -32px oklch(0.1 0.03 262 / 90%);
   --glow-accent: 0 0 0 1px oklch(0.72 0.18 163 / 22%), 0 18px 50px -24px oklch(0.72 0.18 163 / 45%);
-  --amber-live: oklch(0.79 0.16 78);
+  /* Gold + cyan below matched exactly to the Wix Aria mirror (computed-style
+     sampled, not eyeballed): "Source: X" labels used oklch(0.725 0.1 82.3)
+     (#C5A059), pipeline step numbers/freshness timestamps/search button used
+     oklch(0.832 0.145 212.3) (#00E0FF). */
+  --amber-live: oklch(0.725 0.1 82.3);
+  --live-cyan: oklch(0.832 0.145 212.3);
 
   /* Hero gradient stops, sampled from the reference site's compiled CSS
      (bg-primary-900 #0a3f6d -> primary-800 #064b84 -> primary-700 #0158a0,

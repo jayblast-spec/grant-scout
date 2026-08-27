@@ -40,18 +40,27 @@ export function HowItWorks() {
           </div>
         </Reveal>
 
-        <ol className="relative mt-14 grid gap-px overflow-hidden rounded-xl border border-hairline bg-hairline md:grid-cols-3">
+        <ol className="relative mt-14 grid gap-6 md:grid-cols-3">
+          <div
+            className="pointer-events-none absolute inset-x-0 top-1/2 hidden h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-primary/40 to-transparent md:block"
+            aria-hidden="true"
+          />
           {steps.map(({ icon: Icon, step, title, body }, index) => (
             <Reveal key={step} delayMs={index * 90} className="h-full">
-              <Spotlight className="h-full">
-                <li className="relative flex h-full flex-col bg-card/50 p-7 transition-colors duration-200 hover:bg-card/70">
+              <Spotlight className="h-full rounded-xl">
+                <li
+                  className="panel relative flex h-full flex-col p-7 transition-colors duration-200"
+                  style={{ boxShadow: "var(--glow-accent)" }}
+                >
                   <div className="flex items-center justify-between">
                     <span className="flex size-9 items-center justify-center rounded-md border border-primary/25 bg-primary/10 text-primary">
                       <Icon className="size-4" aria-hidden="true" />
                     </span>
-                    <span className="tabular font-mono text-xs text-muted-foreground/70">{step}</span>
+                    <span className="tabular font-display text-lg font-extrabold" style={{ color: "var(--live-cyan)" }}>
+                      {step}
+                    </span>
                   </div>
-                  <h3 className="mt-5 font-display text-base font-semibold tracking-tight text-foreground">
+                  <h3 className="mt-5 font-display text-lg font-semibold tracking-tight text-foreground">
                     {title}
                   </h3>
                   <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{body}</p>

@@ -84,19 +84,11 @@ export function TryIt() {
             <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Ask Grant Scout a funding question.
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Answers are generated from a live search performed when you press send. Sources appear
-              below the answer so you can verify every program yourself.
-            </p>
-            <p className="mt-2 font-mono text-[11px] text-muted-foreground/60">
-              Search history is off by default. This demo does not save or publish your question.
-              Private history may be offered later only with an account and your explicit opt-in.
-            </p>
           </div>
         </Reveal>
 
-        <Reveal delayMs={80}>
-          <form onSubmit={handleSubmit} className="panel mt-10 p-4 sm:p-5">
+        <Reveal delayMs={60}>
+          <form onSubmit={handleSubmit} className="panel mt-6 p-4 sm:p-5">
             <label htmlFor="grant-query" className="sr-only">
               Your funding question
             </label>
@@ -131,6 +123,14 @@ export function TryIt() {
               </button>
             </div>
           </form>
+        </Reveal>
+
+        <Reveal delayMs={100}>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground/60">
+            Answers come from a live search run when you press send, with sources listed below the
+            answer. Search history is off by default and this demo doesn&apos;t save or publish your
+            question.
+          </p>
         </Reveal>
 
         {status === "idle" && (

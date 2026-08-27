@@ -8,24 +8,68 @@ const assurances = [
   { icon: ShieldCheck, label: "No incorporation required to start looking" },
 ];
 
-const pipelinePreview = [
-  { label: "Query received", detail: "solo founder, no LLC yet" },
-  { label: "Live search running", detail: "SerpApi or grants.gov" },
-  { label: "Gemini reasoning", detail: "reviewing result snippets" },
-  { label: "Cited answer ready", detail: "sources attached" },
-];
-
 export function Hero() {
   return (
-    <section id="top" className="hero-gradient relative overflow-hidden border-b border-hairline grain">
+    <section id="top" className="relative overflow-hidden border-b border-hairline bg-background grain">
       <div className="rule-grid pointer-events-none absolute inset-0 opacity-[0.08]" aria-hidden="true" />
       <div
-        className="pointer-events-none absolute -top-40 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-primary/20 blur-[120px]"
+        className="pointer-events-none absolute -top-40 left-1/2 size-[42rem] -translate-x-1/2 rounded-full bg-primary/[0.14] blur-[140px]"
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto grid w-full max-w-6xl gap-14 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-10">
-        <div>
+      {/* On-theme hero visual: a document stack being scanned and verified -
+          the actual mechanic of the product (live search -> cited, checked
+          source) rather than a generic AI/tech stock photo. Original SVG art. */}
+      <div
+        className="pointer-events-none absolute -right-10 top-1/2 hidden h-[30rem] w-[30rem] -translate-y-1/2 opacity-70 lg:block"
+        aria-hidden="true"
+      >
+        <svg viewBox="0 0 400 400" fill="none" className="size-full">
+          <defs>
+            <linearGradient id="docGlow" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="var(--live-cyan)" stopOpacity="0.15" />
+            </linearGradient>
+            <linearGradient id="scanBeam" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="var(--live-cyan)" stopOpacity="0" />
+              <stop offset="50%" stopColor="var(--live-cyan)" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="var(--live-cyan)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* stacked document cards */}
+          <rect x="150" y="150" width="150" height="190" rx="10" fill="var(--card)" stroke="var(--hairline)" opacity="0.7" transform="rotate(-6 225 245)" />
+          <rect x="130" y="130" width="150" height="190" rx="10" fill="var(--card)" stroke="var(--hairline)" opacity="0.85" transform="rotate(-2 205 225)" />
+          <rect x="110" y="110" width="150" height="190" rx="10" fill="var(--card)" stroke="url(#docGlow)" strokeWidth="1.5" />
+
+          {/* text lines on the front document */}
+          <rect x="130" y="140" width="90" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.5" />
+          <rect x="130" y="158" width="110" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.35" />
+          <rect x="130" y="176" width="70" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.35" />
+          <rect x="130" y="204" width="110" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.25" />
+          <rect x="130" y="222" width="95" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.25" />
+
+          {/* diagonal scan beam sweeping the stack */}
+          <rect x="80" y="60" width="18" height="320" fill="url(#scanBeam)" transform="rotate(20 185 220)" />
+
+          {/* radiating source-link nodes */}
+          <g opacity="0.6">
+            <circle cx="300" cy="90" r="3" fill="var(--amber-live)" />
+            <path d="M260 130 L300 90" stroke="var(--amber-live)" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx="330" cy="170" r="3" fill="var(--live-cyan)" />
+            <path d="M265 175 L330 170" stroke="var(--live-cyan)" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx="310" cy="260" r="3" fill="var(--primary)" />
+            <path d="M260 250 L310 260" stroke="var(--primary)" strokeWidth="1" strokeDasharray="3 3" />
+          </g>
+
+          {/* verified badge glowing over the top-left corner of the front card */}
+          <circle cx="110" cy="110" r="22" fill="var(--background)" stroke="var(--primary)" strokeWidth="1.5" />
+          <path d="M100 110 L107 117 L121 101" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </svg>
+      </div>
+
+      <div className="relative mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+        <div className="lg:max-w-2xl">
           <Reveal>
             <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-white/90">
               <span className="relative flex size-1.5">
@@ -37,18 +81,15 @@ export function Hero() {
           </Reveal>
 
           <Reveal delayMs={80}>
-            <h1 className="mt-6 max-w-xl font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-white text-balance sm:text-5xl lg:text-[3.4rem]">
-              Find funding leads worth verifying <span className="text-primary">before you incorporate</span>.
+            <h1 className="mt-6 max-w-2xl font-display text-5xl font-extrabold leading-[0.98] tracking-tight text-white text-balance sm:text-6xl lg:text-[4.2rem]">
+              Grant Scout finds the <span className="text-primary">right funding</span> for your mission.
             </h1>
           </Reveal>
 
           <Reveal delayMs={140}>
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
-              Grant Scout is a research agent for solo founders without a legal entity. It runs a
-              live Google Search through SerpApi and a live grants.gov federal-opportunity search, then Gemini
-              reviews the returned results and explains which grants, non-dilutive programs, and
-              fellowships plausibly fit your situation - with a real source link attached to every
-              program it mentions so you can verify the details.
+            <p className="mt-6 max-w-lg text-base leading-relaxed text-white/70 sm:text-lg">
+              Live search over SerpApi and grants.gov, reasoned by Gemini - every program linked to
+              its real source.
             </p>
           </Reveal>
 
@@ -83,46 +124,6 @@ export function Hero() {
             </ul>
           </Reveal>
         </div>
-
-        <Reveal delayMs={160} className="lg:justify-self-end lg:w-full">
-          <div
-            className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-hero-card shadow-2xl lg:max-w-none"
-            aria-hidden="true"
-          >
-            <div className="flex items-center justify-between border-b border-hero-card-foreground/10 px-4 py-3">
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-hero-card-muted">
-                Live pipeline
-              </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-primary">
-                <span className="size-1.5 rounded-full bg-primary animate-pulse-dot" />
-                real-time
-              </span>
-            </div>
-            <ol className="divide-y divide-hero-card-foreground/10">
-              {pipelinePreview.map((step, index) => (
-                <li key={step.label} className="flex items-center gap-3 px-4 py-3.5">
-                  <span className="tabular font-mono text-[11px] text-hero-card-muted/80">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-hero-card-foreground">{step.label}</p>
-                    <p className="truncate font-mono text-[11px] text-hero-card-muted">{step.detail}</p>
-                  </div>
-                  {index === pipelinePreview.length - 1 ? (
-                    <span className="size-1.5 shrink-0 rounded-full bg-primary" />
-                  ) : (
-                    <span className="size-1.5 shrink-0 rounded-full bg-hero-card-muted/30" />
-                  )}
-                </li>
-              ))}
-            </ol>
-            <div className="border-t border-hero-card-foreground/10 px-4 py-3">
-              <p className="font-mono text-[11px] text-hero-card-muted">
-                This is what happens when you press send below.
-              </p>
-            </div>
-          </div>
-        </Reveal>
       </div>
     </section>
   );

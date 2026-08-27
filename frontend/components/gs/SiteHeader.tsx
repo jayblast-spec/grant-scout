@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Compass, ArrowUpRight } from "lucide-react";
+import { AudioWaveform, ArrowUpRight } from "lucide-react";
 
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
@@ -26,10 +26,16 @@ export function SiteHeader() {
           href="#top"
           className="group flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
-          <span className="flex size-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-105">
-            <Compass className="size-4" aria-hidden="true" />
+          <span
+            className="flex size-9 items-center justify-center rounded-lg border border-primary/30 text-primary transition-transform duration-200 group-hover:scale-105"
+            style={{
+              background: "linear-gradient(135deg, color-mix(in oklch, var(--primary) 22%, transparent), color-mix(in oklch, var(--amber-live) 18%, transparent))",
+              boxShadow: "var(--glow-accent)",
+            }}
+          >
+            <AudioWaveform className="size-4.5" aria-hidden="true" />
           </span>
-          <span className="font-display text-[15px] font-semibold tracking-tight text-foreground">
+          <span className="font-display text-base font-semibold tracking-tight text-foreground">
             Grant Scout
           </span>
         </a>
