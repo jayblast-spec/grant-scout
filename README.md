@@ -134,6 +134,25 @@ Watch the pipeline status ticket - query received, live search running, Gemini r
 | Hosting | Vercel (frontend + Python function, one deployment) |
 
 <details>
+<summary><strong>Run it locally (click to expand)</strong></summary>
+
+```bash
+# Python side (agent + tests)
+pip install -r requirements.txt
+cp .env.example .env   # fill in GOOGLE_API_KEY (Gemini Developer API) and SERPAPI_KEY
+python -m unittest discover tests -v
+
+# Frontend (Next.js + the colocated Python API function)
+cd frontend
+npm install
+npm run dev   # http://localhost:3000
+```
+
+`SERPAPI_KEY` requires a phone-verified SerpApi account before it returns real results (see Engineering notes below). The `grants.gov` tool needs no key.
+
+</details>
+
+<details>
 <summary><strong>Engineering notes: things that weren't obvious going in</strong></summary>
 
 - **SerpApi's free plan gates key activation behind phone verification.** The signup itself doesn't hand you a working key - the account has to clear a phone-verification step before `SERPAPI_KEY` starts returning real `organic_results` instead of an auth error. Worth budgeting a few minutes for this before your first test call, not during a demo.
