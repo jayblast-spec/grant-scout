@@ -36,11 +36,12 @@ export function TryIt() {
     };
   }, []);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const message = query.trim();
-    if (!message || status === "loading") return;
-
+  // Shared by the human form submit AND the WebMCP tool below - an
+  // agent-driven search runs through the exact same pipeline (state, timing
+  // ticket, rendered answer/sources) a person typing in the box would see.
+  // There is no separate "shadow" path for agent calls.
+  async function runQuery(message: string): Promise<ChatResponse> {
+    setQuery(message);
     setStatus("loading");
     setErrorMessage(null);
     setResult(null);
@@ -66,12 +67,66 @@ export function TryIt() {
       setStepIndex(PIPELINE_STEPS.length - 1);
       setResult(data);
       setStatus("done");
+      return data;
     } catch (error) {
       if (timerRef.current) clearInterval(timerRef.current);
-      setErrorMessage(error instanceof Error ? error.message : "The request could not be completed.");
+      const message = error instanceof Error ? error.message : "The request could not be completed.";
+      setErrorMessage(message);
       setStatus("error");
+      throw error;
     }
   }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const message = query.trim();
+    if (!message || status === "loading") return;
+    await runQuery(message).catch(() => {
+      // handled inline above (errorMessage/status already set) - swallow
+      // here so an agent-triggered rejection doesn't surface as an unhandled
+      // promise rejection in the console.
+    });
+  }
+
+  // WebMCP: registers this page's real funding search as a tool an
+  // agent-native browser (ChatGPT's in-app browser, or Chrome 149+ with
+  // chrome://flags/#enable-webmcp-testing) can call directly - not a mock,
+  // the same live SerpApi/grants.gov + Gemini pipeline a visitor triggers by
+  // typing in the box. Feature-detected: no-ops entirely on browsers without
+  // WebMCP support, so this never affects the default experience.
+  useEffect(() => {
+    const modelContext = (document as unknown as { modelContext?: { registerTool: (tool: unknown) => () => void } }).modelContext;
+    if (!modelContext || typeof modelContext.registerTool !== "function") return;
+
+    const unregister = modelContext.registerTool({
+      name: "search_funding_programs",
+      description:
+        "Search for real, currently-open funding programs (grants, fellowships, non-dilutive funding) for a founder or builder, with a focus on flagging which ones plausibly don't require a registered legal entity. Runs a live Google Search (via SerpApi) or, for US federal questions, a live grants.gov API search, then has Gemini review only the real results returned - every claim is cited to a real source URL, nothing is invented.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "A plain-language funding question, e.g. 'grants for a non-incorporated solo founder building an AI agent product in the US'.",
+          },
+        },
+        required: ["query"],
+      },
+      execute: async (input: { query: string }) => {
+        const data = await runQuery(input.query);
+        return {
+          answer: data.answer,
+          sources: data.sources.map((s) => ({ title: s.title, url: s.url, snippet: s.snippet ?? null })),
+        };
+      },
+    });
+
+    return () => {
+      if (typeof unregister === "function") unregister();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isLoading = status === "loading";
 
