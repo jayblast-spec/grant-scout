@@ -14,7 +14,7 @@ from google.adk.runners import InMemoryRunner
 
 _T_ADK_IMPORTED = time.time()
 
-from _lib import build_grant_scout_agent, route_question
+from _lib import build_grant_scout_agent, build_opportunity_dossier, route_question
 from _ratelimit import check_rate_limit, get_client_ip
 
 _T_MODULE_READY = time.time()
@@ -156,6 +156,12 @@ def _ask_grant_scout(question: str) -> dict:
             "searched_live": True,
             "search_query": result["search_query"],
             "sources": result["sources"],
+            "dossier": build_opportunity_dossier(result["sources"]),
+            "route": [
+                f"Discovery agent → {primary_route}",
+                "Eligibility agent → Gemini grounded review",
+                "Readiness agent → evidence-strength and verification queue",
+            ],
         }
 
     return asyncio.run(_run())

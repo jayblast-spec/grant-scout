@@ -30,6 +30,8 @@ If you're a solo, non-incorporated founder, every "AI grant finder" you've tried
 
 ## What It Does
 
+Grant Scout now runs a three-stage evidence workflow: **Discovery** selects and calls the live source, **Eligibility** performs Gemini's citation-bound review, and **Readiness** builds an evidence-strength dossier with the exact checks a founder must complete before relying on a result. This is one interwoven product flow, not three independent chatbots.
+
 Grant Scout lets a solo founder ask a plain-language question - *"what grants can I apply for as a non-incorporated developer-tools founder in the US"* - and get back a live-search-grounded answer instead of a hallucinated list. The agent runs a real Google Search through SerpApi at request time, then uses Gemini to review the returned titles, URLs, and snippets, sort out which ones plausibly don't require a registered legal entity, and explain its reasoning with the real result URL attached. It does not claim to have opened the linked pages; ambiguous eligibility is flagged for the founder to verify.
 
 ## How It Works

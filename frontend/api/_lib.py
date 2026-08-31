@@ -332,6 +332,30 @@ def build_grant_scout_agent(route: str) -> Agent:
 # time, which now always calls build_grant_scout_agent(route_question(question)) instead.
 grant_scout_agent = build_grant_scout_agent("serpapi")
 
+
+def build_opportunity_dossier(sources: list[dict]) -> list[dict]:
+    """Readiness specialist: turn discovered links into an auditable next-step queue.
+
+    This deliberately scores evidence quality, not applicant eligibility. A search
+    snippet cannot prove eligibility; it can only determine what must be verified.
+    """
+    dossier = []
+    for source in sources:
+        link = source.get("link", "")
+        snippet = str(source.get("snippet", ""))
+        authoritative = "grants.gov/" in link
+        eligibility_signal = any(
+            term in snippet.lower()
+            for term in ("individual", "sole proprietor", "small business", "nonprofit", "eligib")
+        )
+        dossier.append({
+            **source,
+            "evidence_strength": "primary registry" if authoritative else "search discovery",
+            "eligibility_signal": "present" if eligibility_signal else "not visible in returned evidence",
+            "next_action": "Open the cited source and verify applicant type, geography, deadline, and exclusions.",
+        })
+    return dossier
+
 # NOTE on streaming (2026-08-25): a real token-by-token streaming path was
 # built and tested against this project's live Vercel deployment, using
 # google-adk's InMemoryRunner.run_async(run_config=RunConfig(streaming_mode=
