@@ -4,6 +4,15 @@ export type GrantSource = {
   snippet?: string;
 };
 
+export type DossierEntry = {
+  title: string;
+  url: string;
+  snippet?: string;
+  evidenceStrength: string;
+  eligibilitySignal: string;
+  nextAction: string;
+};
+
 /**
  * Shape returned by askGrantScout, after mapping the raw API response below.
  */
@@ -11,6 +20,8 @@ export type ChatResponse = {
   answer: string;
   sources: GrantSource[];
   searchQuery?: string;
+  dossier: DossierEntry[];
+  route: string[];
 };
 
 /**
@@ -23,8 +34,10 @@ export type ChatResponse = {
  * type, or the mapping below will silently drop data instead of erroring.
  *
  * Python source of truth:
- *   - frontend/api/chat.py: { answer, searched_live, search_query, sources }
- *   - frontend/api/_lib.py: each source item is { title, link, snippet }
+ *   - frontend/api/chat.py: { answer, searched_live, search_query, sources, dossier, route }
+ *   - frontend/api/_lib.py: each source item is { title, link, snippet };
+ *     build_opportunity_dossier() adds { evidence_strength, eligibility_signal, next_action }
+ *     per source (evidence quality only, never an eligibility verdict - see its docstring).
  *
  * NOTE: a request can also be intercepted before it ever reaches chat.py -
  * Vercel's edge firewall (the /api/chat rate limit) returns its own error
@@ -36,6 +49,15 @@ export type RawChatApiResponse = {
   searched_live: boolean;
   search_query: string | null;
   sources: Array<{ title?: string; link?: string; snippet?: string }>;
+  dossier?: Array<{
+    title?: string;
+    link?: string;
+    snippet?: string;
+    evidence_strength?: string;
+    eligibility_signal?: string;
+    next_action?: string;
+  }>;
+  route?: string[];
   error?: string | { code?: string; message?: string; id?: string };
 };
 
@@ -77,5 +99,19 @@ export async function askGrantScout(message: string): Promise<ChatResponse> {
     url: s.link ?? "#",
     snippet: s.snippet,
   }));
-  return { answer: data.answer, sources, searchQuery: data.search_query ?? undefined };
+  const dossier: DossierEntry[] = (data.dossier ?? []).map((d) => ({
+    title: d.title ?? d.link ?? "Source",
+    url: d.link ?? "#",
+    snippet: d.snippet,
+    evidenceStrength: d.evidence_strength ?? "search discovery",
+    eligibilitySignal: d.eligibility_signal ?? "not visible in returned evidence",
+    nextAction: d.next_action ?? "Open the cited source and verify applicant type, geography, deadline, and exclusions.",
+  }));
+  return {
+    answer: data.answer,
+    sources,
+    searchQuery: data.search_query ?? undefined,
+    dossier,
+    route: data.route ?? [],
+  };
 }
