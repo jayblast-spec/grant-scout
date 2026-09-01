@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowUp, Loader2, ExternalLink, AlertCircle, Quote, Check } from "lucide-react";
+import { ArrowUp, Loader2, ExternalLink, AlertCircle, Quote, Check, Search, ShieldCheck, ListChecks } from "lucide-react";
 import { askGrantScout, EXAMPLE_PROMPTS, type ChatResponse } from "@/lib/grant-scout-client";
 import { Spotlight } from "@/components/gs/Spotlight";
 import { Reveal } from "@/components/gs/Reveal";
@@ -306,6 +306,83 @@ export function TryIt() {
                   </div>
                 </article>
               </Reveal>
+
+              {result.route.length > 0 && (
+                <Reveal delayMs={70}>
+                  <section aria-label="Agent workflow" className="panel overflow-hidden">
+                    <div className="flex items-center gap-2 border-b border-hairline px-5 py-3">
+                      <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        Agent workflow
+                      </h3>
+                    </div>
+                    <ol className="grid gap-px bg-hairline sm:grid-cols-3">
+                      {[
+                        { icon: Search, label: "Discovery", detail: result.route[0] ?? "Live search agent" },
+                        { icon: ShieldCheck, label: "Eligibility", detail: result.route[1] ?? "Evidence review" },
+                        { icon: ListChecks, label: "Readiness", detail: result.route[2] ?? "Verification queue" },
+                      ].map((step) => (
+                        <li key={step.label} className="bg-card/60 p-4">
+                          <div className="flex items-center gap-2">
+                            <step.icon className="size-3.5 text-primary" aria-hidden="true" />
+                            <span className="text-sm font-medium text-foreground">{step.label}</span>
+                          </div>
+                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.detail}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                </Reveal>
+              )}
+
+              {result.dossier.length > 0 && (
+                <Reveal delayMs={80}>
+                  <section aria-label="Opportunity dossier">
+                    <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      Opportunity dossier &mdash; evidence &amp; next steps
+                    </h3>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground/70">
+                      This is evidence quality, not an eligibility verdict &mdash; a search snippet can&apos;t prove
+                      you qualify, only what to verify next.
+                    </p>
+                    <ul className="mt-4 grid gap-3">
+                      {result.dossier.map((entry, index) => {
+                        const eligible = entry.eligibilitySignal === "present";
+                        return (
+                          <li
+                            key={entry.url + index}
+                            className="rounded-lg border border-hairline bg-card/40 p-4"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-sm font-medium text-foreground">{entry.title}</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
+                                    entry.evidenceStrength === "primary registry"
+                                      ? "border-primary/40 text-primary"
+                                      : "border-hairline text-muted-foreground"
+                                  }`}
+                                >
+                                  {entry.evidenceStrength}
+                                </span>
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
+                                    eligible
+                                      ? "border-primary/40 text-primary"
+                                      : "border-destructive/30 text-destructive/80"
+                                  }`}
+                                >
+                                  {eligible ? "eligibility signal found" : "unclear — needs verification"}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{entry.nextAction}</p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                </Reveal>
+              )}
 
               {result.sources.length > 0 && (
                 <Reveal delayMs={90}>
